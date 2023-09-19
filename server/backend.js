@@ -6,6 +6,7 @@ let redisClient;
 const redisExpireTimeInSeconds = 10;
 
 let clients = [];
+let messageHistory = [];
 
 // Intiiate the websocket server
 const initializeWebsocketServer = async (server) => {
@@ -34,14 +35,16 @@ const initializeWebsocketServer = async (server) => {
 // If a new connection is established, the onConnection function is called
 const onConnection = (ws) => {
   console.log("New websocket connection");
+  pushMessages();
   ws.on("close", () => onClose(ws));
   ws.on("message", (message) => onClientMessage(ws, message));
+  ws.send(JSON.stringify({ type: "ping", data: "FROM SERVER" }));
 };
 
 // Get all users from redis
 const getUsersFromRedis = async () => {
   let userKeys = await redisClient.keys("user:*");
-
+  
   let users = [];
   for (let i = 0; i < userKeys.length; i++) {
     let user = await redisClient.get(userKeys[i]);
@@ -51,6 +54,21 @@ const getUsersFromRedis = async () => {
   }
 
   return users;
+};
+
+// Get all messages from redis
+const getMessagesFromRedis = async () => {
+  let messageKeys = await redisClient.keys("message:*");
+  console.log('keys', messageKeys)
+  let messages = [];
+  for (let i = 0; i < messageKeys.length; i++) {
+    let message = await redisClient.get(messageKeys[i]);
+    if (message) {
+      messages.push(JSON.parse(message));
+    }
+  }
+
+  return messages;
 };
 
 // If a new message is received, the onClientMessage function is called
@@ -76,6 +94,10 @@ const onClientMessage = async (ws, message) => {
       publisher.publish("newMessage", JSON.stringify(message));
       break;
     case "message":
+      messageHistory.push({ws, message: messageObject.message});
+      console.log(messageHistory);
+      setMessageHistory(messageHistory);
+      //console.log("New Message saved..." + JSON.stringify(messageHistory));
       publisher.publish("newMessage", JSON.stringify(messageObject));
       break;
     default:
@@ -126,6 +148,7 @@ const heartbeat = async () => {
 // Push the users to all connected clients
 const pushUsers = async () => {
   const users = await getUsersFromRedis();
+  console.log('Alle Users', users)
   const message = {
     type: "users",
     users,
@@ -133,6 +156,27 @@ const pushUsers = async () => {
   clients.forEach((client) => {
     client.ws.send(JSON.stringify(message));
   });
+};
+
+// Push messages to new connected clients
+const pushMessages = async () => {
+  const messages = await getMessagesFromRedis();
+  console.log('Nachrichtem:', messages);
+  const message1 = {
+    type: "message",
+    messages,
+  };
+  messageHistory.forEach((messag) => {
+    messag.ws.send(JSON.stringify(message1));
+  });
+};
+
+const getMessageHistory = async () => {
+  return await redisClient.get("messageHistory");
+};
+
+const setMessageHistory = async (messageHistory) => {
+  await redisClient.set("messageHistory", JSON.stringify(messageHistory));
 };
 
 module.exports = { initializeWebsocketServer };
