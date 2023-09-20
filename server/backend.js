@@ -80,6 +80,7 @@ const onClientMessage = async (ws, message) => {
       clients = clients.filter((client) => client.ws !== ws);
       clients.push({ ws, user: messageObject.user });
       console.log("Number of clients: " + clients.length);
+      console.log("clients: " + clients);
       redisClient.set(
         `user:${messageObject.user.id}`,
         JSON.stringify(messageObject.user)
@@ -95,8 +96,12 @@ const onClientMessage = async (ws, message) => {
       break;
     case "message":
       messageHistory.push({ws, message: messageObject.message});
-      console.log(messageHistory);
-      setMessageHistory(messageHistory);
+      //console.log('MessageHistory', messageHistory);
+      redisClient.set(
+        `message:${messageObject.message.user.id}`,
+        JSON.stringify(messageObject.message)
+      );
+      //setMessageHistory(messageHistory);
       //console.log("New Message saved..." + JSON.stringify(messageHistory));
       publisher.publish("newMessage", JSON.stringify(messageObject));
       break;
@@ -148,7 +153,6 @@ const heartbeat = async () => {
 // Push the users to all connected clients
 const pushUsers = async () => {
   const users = await getUsersFromRedis();
-  console.log('Alle Users', users)
   const message = {
     type: "users",
     users,
@@ -160,15 +164,18 @@ const pushUsers = async () => {
 
 // Push messages to new connected clients
 const pushMessages = async () => {
-  const messages = await getMessagesFromRedis();
-  console.log('Nachrichtem:', messages);
-  const message1 = {
-    type: "message",
-    messages,
-  };
-  messageHistory.forEach((messag) => {
-    messag.ws.send(JSON.stringify(message1));
+  const message = await getMessagesFromRedis();
+  console.log('Nachrichtem:', message);
+  clients.forEach((client) => {
+    client.ws.send(JSON.stringify(message));
   });
+  //const message1 = {
+  //  type: "message",
+  //  messages,
+  //};
+  //messageHistory.forEach((messag) => {
+  //  messag.ws.send(JSON.stringify(message1));
+  //});
 };
 
 const getMessageHistory = async () => {
