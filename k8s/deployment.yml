@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-deployment
+  namespace: pvs-teko3 # Replace with your namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chat
+  template:
+    metadata:
+      labels:
+        app: chat
+    spec:
+      containers:
+        - name: chat
+          image: n03l97/pvs-chat:latest
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "500Mi"
+          env:
+            - name: REDIS_HOST
+              value: redis-service
+          ports:
+            - containerPort: 3000
