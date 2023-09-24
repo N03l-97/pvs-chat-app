@@ -59,7 +59,6 @@ const getUsersFromRedis = async () => {
 // Get all messages from redis
 const getMessagesFromRedis = async () => {
   let messageKeys = await redisClient.keys("message:*");
-  console.log('keys', messageKeys)
   let messages = [];
   for (let i = 0; i < messageKeys.length; i++) {
     let message = await redisClient.get(messageKeys[i]);
@@ -80,7 +79,6 @@ const onClientMessage = async (ws, message) => {
       clients = clients.filter((client) => client.ws !== ws);
       clients.push({ ws, user: messageObject.user });
       console.log("Number of clients: " + clients.length);
-      console.log("clients: " + clients);
       redisClient.set(
         `user:${messageObject.user.id}`,
         JSON.stringify(messageObject.user)
@@ -169,13 +167,6 @@ const pushMessages = async () => {
   clients.forEach((client) => {
     client.ws.send(JSON.stringify(message));
   });
-  //const message1 = {
-  //  type: "message",
-  //  messages,
-  //};
-  //messageHistory.forEach((messag) => {
-  //  messag.ws.send(JSON.stringify(message1));
-  //});
 };
 
 const getMessageHistory = async () => {
