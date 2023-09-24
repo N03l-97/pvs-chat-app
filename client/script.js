@@ -16,27 +16,24 @@ const socket = new WebSocket(backendUrl);
 // !!!!!!!!!!!! DON'T TOUCH ANYTHING ABOVE THIS LINE !!!!!!!!!!!!
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-function guidGenerator() {
-  var S4 = function () {
-    return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
-  };
-  return (
-    S4() +
-    S4() +
-    "-" +
-    S4() +
-    "-" +
-    S4() +
-    "-" +
-    S4() +
-    "-" +
-    S4() +
-    S4() +
-    S4()
-  );
-};
 
-const userId = guidGenerator();
+const usedIDs = new Set();
+
+function generateUniqueID() {
+  const min = 10000;
+  const max = 99999;
+
+  let randomID;
+  do {
+    randomID = Math.floor(Math.random() * (max - min + 1)) + min;
+  } while (usedIDs.has(randomID));
+
+  usedIDs.add(randomID);
+
+  return randomID.toString();
+}
+
+const userId = generateUniqueID();
 
 async function getRandomUser() {
   const response = await fetch("https://randomuser.me/api/");
@@ -72,6 +69,7 @@ socket.addEventListener("message", (event) => {
   switch (messageObject.type) {
     case "ping":
       socket.send(JSON.stringify({ type: "pong", data: "FROM CLIENT" }));
+      break;
     case "users":
       // TODO: Show the current users as DOM elements
       showUsers(messageObject.users);
@@ -91,7 +89,7 @@ function showUsers(users) {
     const usersElement = document.getElementById("users");
     usersElement.innerHTML = "";
     users.forEach((user) => {
-      const userElement = `<div>🟢 ${user.name}</div>`;
+      const userElement = `<div>🟩 ${user.name}</div>`;
       usersElement.innerHTML += userElement;
     });
   };
